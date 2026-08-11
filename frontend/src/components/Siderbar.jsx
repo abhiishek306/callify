@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
-import { BellIcon, HomeIcon, ShipWheelIcon, UsersIcon } from "lucide-react";
+import { BellIcon, HomeIcon, MessageCircleMoreIcon, ShipWheelIcon, UsersIcon } from "lucide-react";
 
 const Sidebar = () => {
   const { authUser } = useAuthUser();
@@ -8,63 +8,63 @@ const Sidebar = () => {
   const currentPath = location.pathname;
 
   return (
-    <aside className="w-64 bg-base-200 border-r border-base-300 hidden lg:flex flex-col h-screen sticky top-0">
-      <div className="p-5 border-b border-base-300">
+    <aside className="hidden h-screen w-72 flex-col border-r border-base-300 bg-base-200/95 lg:flex">
+      <div className="border-b border-base-300 p-5">
         <Link to="/" className="flex items-center gap-2.5">
-          <ShipWheelIcon className="size-9 text-primary" />
-          <span className="text-3xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary  tracking-wider">
+          <ShipWheelIcon className="size-8 text-primary" />
+          <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-2xl font-semibold tracking-wide text-transparent">
             Streamify
           </span>
         </Link>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 space-y-1 p-3">
         <Link
           to="/"
-          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
-            currentPath === "/" ? "btn-active" : ""
+          className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${
+            currentPath === "/" ? "bg-primary/10 text-primary" : "hover:bg-base-300/70"
           }`}
         >
-          <HomeIcon className="size-5 text-base-content opacity-70" />
-          <span>Home</span>
+          <HomeIcon className="size-5" />
+          <span className="font-medium">Home</span>
         </Link>
 
         <Link
           to="/friends"
-          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
-            currentPath === "/friends" ? "btn-active" : ""
+          className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${
+            currentPath === "/friends" ? "bg-primary/10 text-primary" : "hover:bg-base-300/70"
           }`}
         >
-          <UsersIcon className="size-5 text-base-content opacity-70" />
-          <span>Friends</span>
+          <UsersIcon className="size-5" />
+          <span className="font-medium">Friends</span>
         </Link>
 
         <Link
           to="/notifications"
-          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
-            currentPath === "/notifications" ? "btn-active" : ""
+          className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${
+            currentPath === "/notifications" ? "bg-primary/10 text-primary" : "hover:bg-base-300/70"
           }`}
         >
-          <BellIcon className="size-5 text-base-content opacity-70" />
-          <span>Notifications</span>
+          <BellIcon className="size-5" />
+          <span className="font-medium">Notifications</span>
         </Link>
       </nav>
 
-      {/* USER PROFILE SECTION */}
-      <div className="p-4 border-t border-base-300 mt-auto">
-        <div className="flex items-center gap-3">
+      <div className="border-t border-base-300 p-4">
+        <div className="flex items-center gap-3 rounded-2xl bg-base-100/80 p-3">
           <div className="avatar">
-            <div className="w-10 rounded-full">
+            <div className="w-11 rounded-full ring-2 ring-primary/20">
               <img src={authUser?.profilePic} alt="User Avatar" />
             </div>
           </div>
           <div className="flex-1">
             <p className="font-semibold text-sm">{authUser?.fullName}</p>
-            <p className="text-xs text-success flex items-center gap-1">
-              <span className="size-2 rounded-full bg-success inline-block" />
-              Online
-            </p>
+            <div className="flex items-center gap-1 text-xs text-success">
+              <span className="inline-block h-2 w-2 rounded-full bg-success" />
+              <span>Online</span>
+            </div>
           </div>
+          <MessageCircleMoreIcon className="size-4 opacity-70" />
         </div>
       </div>
     </aside>

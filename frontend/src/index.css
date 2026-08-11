@@ -2,27 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply transition-colors duration-300;
+}
+
+* {
+  @apply transition-all duration-200;
+}
+
 .str-chat__channel {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(to bottom, #c9e8c9, #b7e7bb);
   height: 100%;
+  background: linear-gradient(to bottom, #f5f7fb, #f8fbf8);
 }
 
 .str-chat__container {
-  max-width: 1200px;
   width: 100%;
-  height: 80% !important;
-  margin: 0 auto !important;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  height: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  border-radius: 0;
+  box-shadow: none;
   overflow: hidden;
+  background: transparent;
 }
 
 .str-chat__list {
-  background-color: #ffffff;
-  padding: 12px;
+  background: transparent;
+  padding: 0;
 }
 
 .str-chat__list-notifications {
@@ -30,5 +41,46 @@
 }
 
 .str-chat__message-input {
-  border-top: 1px solid #ddd;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  padding: 0.6rem 0.85rem;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.str-chat__message-input textarea {
+  font-size: 0.95rem;
+  padding: 0.2rem 0;
+  background: transparent;
+}
+
+.str-chat__message-input button {
+  background: #25d366;
+  color: white;
+  border-radius: 9999px;
+}
+
+.str-chat__message-simple {
+  margin: 0.35rem 0;
+}
+
+.str-chat__message-simple__text-content {
+  border-radius: 1.1rem 1.1rem 1.1rem 0.25rem;
+  padding: 0.7rem 0.9rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  background: #f0f2f5;
+  color: #111827;
+}
+
+.str-chat__message-simple__text-content--mine {
+  border-radius: 1.1rem 1.1rem 0.25rem 1.1rem;
+  background: #dcf8c6;
+}
+
+.str-chat__message-simple__text-content-wrapper {
+  max-width: 78%;
+}
+
+.str-chat__message-data {
+  margin-top: 0.25rem;
 }

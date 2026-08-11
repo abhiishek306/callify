@@ -10,9 +10,15 @@ import userRoutes from "./routes/user.route.js";
 import chatRoutes from "./routes/chat.route.js";
 
 import { connectDB } from "./lib/db.js";
+import { initSocket } from "./lib/socket.js";
+import { createServer } from "http";
+import { generalLimiter, authLimiter } from "./middleware/rateLimiter.js";
+import { initCache } from "./lib/cache.js";
+import { env } from "./config/env.js";
 
 const app = express();
-const PORT = process.env.PORT;
+const PORT = env.port;
+const server = createServer(app);
 
 const __dirname = path.resolve();
 const uploadsPath = path.join(__dirname, "uploads");
@@ -50,9 +56,10 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(generalLimiter);
 app.use("/uploads", express.static(uploadsPath));
 
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/chat", chatRoutes);
 
@@ -64,7 +71,10 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-app.listen(PORT, () => {
+initSocket(server);
+
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   connectDB();
+  initCache().catch((error) => console.error("Redis init failed", error));
 });

@@ -40,106 +40,83 @@ const LoginPage = () => {
   };
 
   return (
-    <div
-      className="h-screen flex items-center justify-center p-4 sm:p-6 md:p-8"
-      data-theme="forest"
-    >
-      <div className="border border-primary/25 flex flex-col lg:flex-row w-full max-w-5xl mx-auto bg-base-100 rounded-xl shadow-lg overflow-hidden">
-        {/* LOGIN FORM SECTION */}
-        <div className="w-full lg:w-1/2 p-4 sm:p-8 flex flex-col">
-          {/* LOGO */}
-          <div className="mb-4 flex items-center justify-start gap-2">
+    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(37,211,102,0.15),_transparent_45%)] p-4 sm:p-6 md:p-8" data-theme="forest">
+      <div className="mx-auto flex w-full max-w-6xl overflow-hidden rounded-[28px] border border-primary/20 bg-base-100 shadow-2xl shadow-primary/10 lg:flex-row">
+        <div className="flex w-full flex-col p-6 sm:p-8 lg:w-1/2">
+          <div className="mb-8 flex items-center gap-2">
             <ShipWheelIcon className="size-9 text-primary" />
-            <span className="text-3xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary  tracking-wider">
+            <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-3xl font-bold tracking-wider text-transparent">
               Streamify
             </span>
           </div>
 
-          {/* ERROR MESSAGE DISPLAY */}
           {error && (
             <div className="alert alert-error mb-4">
               <span>{error.response.data.message}</span>
             </div>
           )}
 
-          <div className="w-full">
-            <form onSubmit={handleLogin}>
-              <div className="space-y-4">
-                <div>
-                  <h2 className="text-xl font-semibold">Welcome Back</h2>
-                  <p className="text-sm opacity-70">
-                    Sign in to your account to continue your language journey
-                  </p>
-                </div>
+          <form onSubmit={handleLogin} className="flex-1 space-y-5">
+            <div>
+              <h2 className="text-2xl font-semibold">Welcome back</h2>
+              <p className="mt-1 text-sm opacity-70">Sign in to continue chatting and learning together.</p>
+            </div>
 
-                <div className="flex flex-col gap-3">
-                  <div className="form-control w-full space-y-2">
-                    <label className="label">
-                      <span className="label-text">Email</span>
-                    </label>
-                    <input
-                      type="email"
-                      placeholder="hello@example.com"
-                      className="input input-bordered w-full"
-                      value={loginData.email}
-                      onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                      required
-                    />
-                  </div>
+            <div className="space-y-3">
+              <label className="form-control w-full">
+                <span className="label-text mb-2">Email</span>
+                <input
+                  type="email"
+                  placeholder="hello@example.com"
+                  className="input input-bordered w-full"
+                  value={loginData.email}
+                  onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                  required
+                />
+              </label>
 
-                  <div className="form-control w-full space-y-2">
-                    <label className="label">
-                      <span className="label-text">Password</span>
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                      className="input input-bordered w-full"
-                      value={loginData.password}
-                      onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                      required
-                    />
-                  </div>
+              <label className="form-control w-full">
+                <span className="label-text mb-2">Password</span>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  className="input input-bordered w-full"
+                  value={loginData.password}
+                  onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                  required
+                />
+              </label>
+            </div>
 
-                  <button type="submit" className="btn btn-primary w-full" disabled={isPending}>
-                    {isPending ? (
-                      <>
-                        <span className="loading loading-spinner loading-xs"></span>
-                        Signing in...
-                      </>
-                    ) : (
-                      "Sign In"
-                    )}
-                  </button>
+            <button type="submit" className="btn btn-primary w-full" disabled={isPending}>
+              {isPending ? (
+                <>
+                  <span className="loading loading-spinner loading-xs" />
+                  Signing in...
+                </>
+              ) : (
+                "Sign In"
+              )}
+            </button>
 
-                  <div className="text-center mt-4">
-                    <p className="text-sm">
-                      Don't have an account?{" "}
-                      <Link to="/signup" className="text-primary hover:underline">
-                        Create one
-                      </Link>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </form>
-          </div>
+            <div className="text-center text-sm">
+              <span className="opacity-70">Don’t have an account?</span>{" "}
+              <Link to="/signup" className="font-semibold text-primary hover:underline">
+                Create one
+              </Link>
+            </div>
+          </form>
         </div>
 
-        {/* IMAGE SECTION */}
-        <div className="hidden lg:flex w-full lg:w-1/2 bg-primary/10 items-center justify-center">
-          <div className="max-w-md p-8">
-            {/* Illustration */}
-            <div className="relative aspect-square max-w-sm mx-auto">
-              <img src="/i.png" alt="Language connection illustration" className="w-full h-full" />
+        <div className="hidden w-full items-center justify-center bg-primary/10 p-8 lg:flex lg:w-1/2">
+          <div className="max-w-md text-center">
+            <div className="mx-auto mb-6 aspect-square max-w-sm">
+              <img src="/i.png" alt="Language connection illustration" className="h-full w-full" />
             </div>
-
-            <div className="text-center space-y-3 mt-6">
-              <h2 className="text-xl font-semibold">Connect with language partners worldwide</h2>
-              <p className="opacity-70">
-                Practice conversations, make friends, and improve your language skills together
-              </p>
-            </div>
+            <h2 className="text-xl font-semibold">Connect with language partners worldwide</h2>
+            <p className="mt-3 text-sm opacity-70">
+              Practice conversations, make friends, and improve your language skills together.
+            </p>
           </div>
         </div>
       </div>

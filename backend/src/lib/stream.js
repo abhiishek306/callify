@@ -28,3 +28,22 @@ export const generateStreamToken = (userId) => {
     console.error("Error generating Stream token:", error);
   }
 };
+
+export const sendStreamMessage = async ({ channelId, userId, text }) => {
+  try {
+    if (!channelId || !userId || !text) return null;
+
+    const channel = streamClient.channel("messaging", channelId);
+    await channel.watch();
+
+    const message = await channel.sendMessage({
+      text,
+      user_id: userId.toString(),
+    });
+
+    return message;
+  } catch (error) {
+    console.error("Error sending Stream message:", error);
+    return null;
+  }
+};

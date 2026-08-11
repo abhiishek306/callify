@@ -1,0 +1,20 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    ports:
+      - "5001:5001"
+    environment:
+      - NODE_ENV=production
+      - PORT=5001
+      - MONGO_URI=${MONGO_URI}
+      - JWT_SECRET=${JWT_SECRET}
+      - STREAM_API_KEY=${STREAM_API_KEY}
+      - STREAM_API_SECRET=${STREAM_API_SECRET}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"

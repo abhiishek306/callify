@@ -102,17 +102,18 @@ const OnboardingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-base-100 flex items-center justify-center p-4">
-      <div className="card bg-base-200 w-full max-w-3xl shadow-xl">
-        <div className="card-body p-6 sm:p-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-center mb-6">Complete Your Profile</h1>
+    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(37,211,102,0.15),_transparent_45%)] p-4 sm:p-6 md:p-8">
+      <div className="w-full max-w-4xl overflow-hidden rounded-[28px] border border-primary/20 bg-base-100 shadow-2xl shadow-primary/10">
+        <div className="p-6 sm:p-8">
+          <div className="mb-6 text-center">
+            <h1 className="text-2xl font-bold sm:text-3xl">Complete your profile</h1>
+            <p className="mt-2 text-sm opacity-70">Set up your identity so your future chat partners know who you are.</p>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* PROFILE PIC CONTAINER */}
             <div className="flex flex-col items-center justify-center space-y-4">
-              {/* IMAGE PREVIEW */}
               <div
-                className="size-32 rounded-full bg-base-300 overflow-hidden cursor-pointer ring-2 ring-transparent hover:ring-primary transition-all"
+                className="flex size-32 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-base-300 ring-2 ring-transparent transition-all hover:ring-primary"
                 onClick={openFilePicker}
                 role="button"
                 tabIndex={0}
@@ -124,58 +125,56 @@ const OnboardingPage = () => {
                 }}
               >
                 {profilePicPreview ? (
-                  <img
-                    src={profilePicPreview}
-                    alt="Profile Preview"
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={profilePicPreview} alt="Profile Preview" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <CameraIcon className="size-12 text-base-content opacity-40" />
-                  </div>
+                  <CameraIcon className="size-12 text-base-content opacity-40" />
                 )}
               </div>
 
-              {/* Generate Random Avatar BTN */}
-              <div className="flex flex-col sm:flex-row items-center gap-2">
+              <div className="flex flex-col items-center gap-2 sm:flex-row">
                 <label className="btn btn-outline cursor-pointer">
-                  <UploadIcon className="size-4 mr-2" />
+                  <UploadIcon className="mr-2 size-4" />
                   Upload Photo
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleProfilePicChange}
-                  />
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleProfilePicChange} />
                 </label>
                 <button type="button" onClick={handleRandomAvatar} className="btn btn-accent">
-                  <ShuffleIcon className="size-4 mr-2" />
+                  <ShuffleIcon className="mr-2 size-4" />
                   Generate Random Avatar
                 </button>
               </div>
             </div>
 
-            {/* FULL NAME */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Full Name</span>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="form-control">
+                <span className="label-text mb-2">Full Name</span>
+                <input
+                  type="text"
+                  name="fullName"
+                  value={formState.fullName}
+                  onChange={(e) => setFormState({ ...formState, fullName: e.target.value })}
+                  className="input input-bordered w-full"
+                  placeholder="Your full name"
+                />
               </label>
-              <input
-                type="text"
-                name="fullName"
-                value={formState.fullName}
-                onChange={(e) => setFormState({ ...formState, fullName: e.target.value })}
-                className="input input-bordered w-full"
-                placeholder="Your full name"
-              />
+
+              <label className="form-control">
+                <span className="label-text mb-2">Location</span>
+                <div className="relative">
+                  <MapPinIcon className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-base-content opacity-70" />
+                  <input
+                    type="text"
+                    name="location"
+                    value={formState.location}
+                    onChange={(e) => setFormState({ ...formState, location: e.target.value })}
+                    className="input input-bordered w-full pl-10"
+                    placeholder="City, Country"
+                  />
+                </div>
+              </label>
             </div>
 
-            {/* BIO */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Bio</span>
-              </label>
+            <label className="form-control">
+              <span className="label-text mb-2">Bio</span>
               <textarea
                 name="bio"
                 value={formState.bio}
@@ -183,15 +182,11 @@ const OnboardingPage = () => {
                 className="textarea textarea-bordered h-24"
                 placeholder="Tell others about yourself and your language learning goals"
               />
-            </div>
+            </label>
 
-            {/* LANGUAGES */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* NATIVE LANGUAGE */}
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Native Language</span>
-                </label>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="form-control">
+                <span className="label-text mb-2">Native Language</span>
                 <select
                   name="nativeLanguage"
                   value={formState.nativeLanguage}
@@ -205,13 +200,10 @@ const OnboardingPage = () => {
                     </option>
                   ))}
                 </select>
-              </div>
+              </label>
 
-              {/* LEARNING LANGUAGE */}
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Learning Language</span>
-                </label>
+              <label className="form-control">
+                <span className="label-text mb-2">Learning Language</span>
                 <select
                   name="learningLanguage"
                   value={formState.learningLanguage}
@@ -225,38 +217,18 @@ const OnboardingPage = () => {
                     </option>
                   ))}
                 </select>
-              </div>
-            </div>
-
-            {/* LOCATION */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Location</span>
               </label>
-              <div className="relative">
-                <MapPinIcon className="absolute top-1/2 transform -translate-y-1/2 left-3 size-5 text-base-content opacity-70" />
-                <input
-                  type="text"
-                  name="location"
-                  value={formState.location}
-                  onChange={(e) => setFormState({ ...formState, location: e.target.value })}
-                  className="input input-bordered w-full pl-10"
-                  placeholder="City, Country"
-                />
-              </div>
             </div>
-
-            {/* SUBMIT BUTTON */}
 
             <button className="btn btn-primary w-full" disabled={isPending} type="submit">
               {!isPending ? (
                 <>
-                  <ShipWheelIcon className="size-5 mr-2" />
+                  <ShipWheelIcon className="mr-2 size-5" />
                   Complete Onboarding
                 </>
               ) : (
                 <>
-                  <LoaderIcon className="animate-spin size-5 mr-2" />
+                  <LoaderIcon className="mr-2 size-5 animate-spin" />
                   Onboarding...
                 </>
               )}
