@@ -8,6 +8,7 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET || "dev_jwt_secret",
   streamApiKey: process.env.STREAM_API_KEY,
   streamApiSecret: process.env.STREAM_API_SECRET,
-  redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
+  redisUrl:
+    process.env.REDIS_URL || (process.env.NODE_ENV === "production" ? "" : "redis://localhost:6379"),
   nodeEnv: process.env.NODE_ENV || "development",
 };
