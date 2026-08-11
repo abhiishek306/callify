@@ -17,7 +17,19 @@ const PORT = process.env.PORT;
 const __dirname = path.resolve();
 const uploadsPath = path.join(__dirname, "uploads");
 
-const isAllowedDevOrigin = (origin) => /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "https://callify-ki5o.onrender.com",
+];
+
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+
+  return allowedOrigins.includes(origin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+};
 
 if (!fs.existsSync(uploadsPath)) {
   fs.mkdirSync(uploadsPath, { recursive: true });
@@ -26,7 +38,7 @@ if (!fs.existsSync(uploadsPath)) {
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || isAllowedDevOrigin(origin)) {
+      if (isAllowedOrigin(origin)) {
         return callback(null, true);
       }
 
