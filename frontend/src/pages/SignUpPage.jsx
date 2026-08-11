@@ -3,39 +3,84 @@ import { ShipWheelIcon } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 
 import useSignUp from "../hooks/useSignUp";
+import { sendPhoneOtp, verifyPhoneOtp } from "../lib/api";
 
 const SignUpPage = () => {
   const navigate = useNavigate();
   const [signupData, setSignupData] = useState({
     fullName: "",
     email: "",
+    phoneNumber: "",
     password: "",
   });
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpInput, setOtpInput] = useState("");
+  const [otpMessage, setOtpMessage] = useState("");
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
-  // This is how we did it at first, without using our custom hook
-  // const queryClient = useQueryClient();
-  // const {
-  //   mutate: signupMutation,
-  //   isPending,
-  //   error,
-  // } = useMutation({
-  //   mutationFn: signup,
-  //   onSuccess: () => queryClient.invalidateQueries({ queryKey: ["authUser"] }),
-  // });
-
-  // This is how we did it using our custom hook - optimized version
   const { isPending, error, signupMutation } = useSignUp();
 
-  const handleSignup = (e) => {
+  const handleSendOtp = async (e) => {
     e.preventDefault();
-    signupMutation({
-      ...signupData,
-      email: signupData.email.trim().toLowerCase(),
-    }, {
-      onSuccess: () => {
-        navigate("/login");
+
+    if (!signupData.fullName || !signupData.password) {
+      setOtpMessage("Please fill in your name and password.");
+      return;
+    }
+
+    if (!signupData.phoneNumber.trim()) {
+      setOtpMessage("Phone number is required for verification.");
+      return;
+    }
+
+    try {
+      setIsSendingOtp(true);
+      const phoneNumber = signupData.phoneNumber.trim();
+      const result = await sendPhoneOtp(phoneNumber);
+      setOtpMessage(result.message || `Verification code sent to ${phoneNumber}`);
+      setOtpStep(true);
+    } catch (error) {
+      setOtpMessage(error.response?.data?.message || "Unable to send verification code. Please try again.");
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleSignup = () => {
+    signupMutation(
+      {
+        ...signupData,
+        email: signupData.email.trim().toLowerCase(),
+        phoneNumber: signupData.phoneNumber.trim(),
       },
-    });
+      {
+        onSuccess: () => {
+          navigate("/login");
+        },
+      }
+    );
+  };
+
+  const handleVerifyOtpAndSignup = async () => {
+    if (!otpInput.trim()) {
+      setOtpMessage("Please enter the 6-digit code.");
+      return;
+    }
+
+    try {
+      setIsVerifyingOtp(true);
+      await verifyPhoneOtp({
+        phoneNumber: signupData.phoneNumber.trim(),
+        code: otpInput.trim(),
+      });
+      setOtpMessage("Phone verified successfully.");
+      handleSignup();
+    } catch (error) {
+      setOtpMessage(error.response?.data?.message || "The verification code is incorrect. Please try again.");
+    } finally {
+      setIsVerifyingOtp(false);
+    }
   };
 
   return (
@@ -55,76 +100,163 @@ const SignUpPage = () => {
             </div>
           )}
 
-          <form onSubmit={handleSignup} className="flex-1 space-y-4">
-            <div>
-              <h2 className="text-2xl font-semibold">Create your account</h2>
-              <p className="mt-1 text-sm opacity-70">Join and start connecting with language partners right away.</p>
+          {otpMessage && !otpStep && (
+            <div className="alert alert-info mb-4 text-sm">
+              <span>{otpMessage}</span>
             </div>
+          )}
 
-            <div className="space-y-3">
+          {!otpStep ? (
+            <form onSubmit={handleSendOtp} className="flex-1 space-y-4">
+              <div>
+                <h2 className="text-2xl font-semibold">Create your account</h2>
+                <p className="mt-1 text-sm opacity-70">Join and start connecting with language partners right away.</p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="form-control w-full">
+                  <span className="label-text mb-2">Full Name</span>
+                  <input
+                    type="text"
+                    placeholder="John Doe"
+                    className="input input-bordered w-full"
+                    value={signupData.fullName}
+                    onChange={(e) => setSignupData({ ...signupData, fullName: e.target.value })}
+                    required
+                  />
+                </label>
+
+                <label className="form-control w-full">
+                  <span className="label-text mb-2">Email</span>
+                  <input
+                    type="email"
+                    placeholder="john@gmail.com"
+                    className="input input-bordered w-full"
+                    value={signupData.email}
+                    onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
+                  />
+                </label>
+
+                <label className="form-control w-full">
+                  <span className="label-text mb-2">Phone number</span>
+                  <input
+                    type="tel"
+                    placeholder="+1 555 123 4567"
+                    className="input input-bordered w-full"
+                    value={signupData.phoneNumber}
+                    onChange={(e) => setSignupData({ ...signupData, phoneNumber: e.target.value })}
+                  />
+                </label>
+
+                <label className="form-control w-full">
+                  <span className="label-text mb-2">Password</span>
+                  <input
+                    type="password"
+                    placeholder="********"
+                    className="input input-bordered w-full"
+                    value={signupData.password}
+                    onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
+                    required
+                  />
+                  <span className="label-text-alt mt-1">Password must be at least 6 characters long</span>
+                </label>
+
+                <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-base-300 bg-base-100 p-3">
+                  <input type="checkbox" className="checkbox checkbox-sm mt-0.5" required />
+                  <span className="text-sm leading-tight">
+                    I agree to the <span className="text-primary hover:underline">terms of service</span> and <span className="text-primary hover:underline">privacy policy</span>.
+                  </span>
+                </label>
+              </div>
+
+              <button className="btn btn-primary w-full" type="submit" disabled={isSendingOtp}>
+                {isPending || isSendingOtp ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs" />
+                    {isSendingOtp ? "Sending code..." : "Loading..."}
+                  </>
+                ) : (
+                  "Next"
+                )}
+              </button>
+
+              <div className="text-center text-sm">
+                <span className="opacity-70">Already have an account?</span>{" "}
+                <Link to="/login" className="font-semibold text-primary hover:underline">
+                  Sign in
+                </Link>
+              </div>
+            </form>
+          ) : (
+            <div className="flex flex-1 flex-col justify-center space-y-5">
+              <div>
+                <h2 className="text-2xl font-semibold">Verify your number</h2>
+                <p className="mt-2 text-sm opacity-70">We sent a 6-digit code to {signupData.phoneNumber}.</p>
+              </div>
+
+              {otpMessage && (
+                <div className="alert alert-info text-sm">
+                  <span>{otpMessage}</span>
+                </div>
+              )}
+
               <label className="form-control w-full">
-                <span className="label-text mb-2">Full Name</span>
+                <span className="label-text mb-2">Enter code</span>
                 <input
                   type="text"
-                  placeholder="John Doe"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="123456"
                   className="input input-bordered w-full"
-                  value={signupData.fullName}
-                  onChange={(e) => setSignupData({ ...signupData, fullName: e.target.value })}
-                  required
+                  value={otpInput}
+                  onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ""))}
                 />
               </label>
 
-              <label className="form-control w-full">
-                <span className="label-text mb-2">Email</span>
-                <input
-                  type="email"
-                  placeholder="john@gmail.com"
-                  className="input input-bordered w-full"
-                  value={signupData.email}
-                  onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
-                  required
-                />
-              </label>
+              <button className="btn btn-primary w-full" onClick={handleVerifyOtpAndSignup} disabled={isVerifyingOtp}>
+                {isVerifyingOtp ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs" />
+                    Verifying...
+                  </>
+                ) : (
+                  "Verify & Create Account"
+                )}
+              </button>
 
-              <label className="form-control w-full">
-                <span className="label-text mb-2">Password</span>
-                <input
-                  type="password"
-                  placeholder="********"
-                  className="input input-bordered w-full"
-                  value={signupData.password}
-                  onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                  required
-                />
-                <span className="label-text-alt mt-1">Password must be at least 6 characters long</span>
-              </label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  className="btn btn-ghost flex-1"
+                  onClick={async () => {
+                    try {
+                      setIsSendingOtp(true);
+                      const result = await sendPhoneOtp(signupData.phoneNumber.trim());
+                      setOtpMessage(result.message || `Verification code sent to ${signupData.phoneNumber}`);
+                    } catch (error) {
+                      setOtpMessage(error.response?.data?.message || "Unable to resend code.");
+                    } finally {
+                      setIsSendingOtp(false);
+                    }
+                  }}
+                >
+                  Resend
+                </button>
 
-              <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-base-300 bg-base-100 p-3">
-                <input type="checkbox" className="checkbox checkbox-sm mt-0.5" required />
-                <span className="text-sm leading-tight">
-                  I agree to the <span className="text-primary hover:underline">terms of service</span> and <span className="text-primary hover:underline">privacy policy</span>.
-                </span>
-              </label>
+                <button
+                  type="button"
+                  className="btn btn-ghost flex-1"
+                  onClick={() => {
+                    setOtpStep(false);
+                    setOtpInput("");
+                    setOtpMessage("");
+                  }}
+                >
+                  Edit number
+                </button>
+              </div>
             </div>
-
-            <button className="btn btn-primary w-full" type="submit">
-              {isPending ? (
-                <>
-                  <span className="loading loading-spinner loading-xs" />
-                  Loading...
-                </>
-              ) : (
-                "Create Account"
-              )}
-            </button>
-
-            <div className="text-center text-sm">
-              <span className="opacity-70">Already have an account?</span>{" "}
-              <Link to="/login" className="font-semibold text-primary hover:underline">
-                Sign in
-              </Link>
-            </div>
-          </form>
+          )}
         </div>
 
         <div className="hidden w-full items-center justify-center bg-primary/10 p-8 lg:flex lg:w-1/2">

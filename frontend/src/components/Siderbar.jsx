@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
-import { BellIcon, HomeIcon, MessageCircleMoreIcon, ShipWheelIcon, UsersIcon } from "lucide-react";
+import { BellIcon, HomeIcon, MessageCircleMoreIcon, PencilLineIcon, ShipWheelIcon, UsersIcon } from "lucide-react";
 
 const Sidebar = () => {
   const { authUser } = useAuthUser();
@@ -64,7 +64,9 @@ const Sidebar = () => {
               <span>Online</span>
             </div>
           </div>
-          <MessageCircleMoreIcon className="size-4 opacity-70" />
+          <Link to="/profile" className="rounded-full bg-base-200 p-2 text-base-content transition hover:bg-base-300" aria-label="Edit profile">
+            <PencilLineIcon className="size-4" />
+          </Link>
         </div>
       </div>
     </aside>

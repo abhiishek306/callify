@@ -5,34 +5,48 @@ import jwt from "jsonwebtoken";
 const jwtSecret = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY;
 
 export async function signup(req, res) {
-  const { email, password, fullName } = req.body;
+  const { email, password, fullName, phoneNumber } = req.body;
   const normalizedEmail = email?.trim().toLowerCase();
+  const normalizedPhone = phoneNumber?.trim();
 
   try {
-    if (!email || !password || !fullName) {
-      return res.status(400).json({ message: "All fields are required" });
+    if (!fullName || !password || (!normalizedEmail && !normalizedPhone)) {
+      return res.status(400).json({ message: "Full name, password, and either email or phone number are required" });
     }
 
     if (password.length < 6) {
       return res.status(400).json({ message: "Password must be at least 6 characters" });
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!emailRegex.test(normalizedEmail)) {
-      return res.status(400).json({ message: "Invalid email format" });
+    if (normalizedEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(normalizedEmail)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
     }
 
-    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (normalizedPhone) {
+      const normalizedPhoneValue = normalizedPhone.replace(/\s+/g, "");
+      if (!/^\+?[1-9]\d{7,14}$/.test(normalizedPhoneValue)) {
+        return res.status(400).json({ message: "Invalid phone number format" });
+      }
+    }
+
+    const existingUser = await User.findOne({
+      $or: [{ email: normalizedEmail }, { phoneNumber: normalizedPhone }].filter(Boolean),
+    });
+
     if (existingUser) {
-      return res.status(400).json({ message: "Email already exists, please use a diffrent one" });
+      const duplicateField = existingUser.email === normalizedEmail ? "Email" : "Phone number";
+      return res.status(400).json({ message: `${duplicateField} already exists, please use a different one` });
     }
 
-    const idx = Math.floor(Math.random() * 100) + 1; // generate a num between 1-100
+    const idx = Math.floor(Math.random() * 100) + 1;
     const randomAvatar = `https://avatar.iran.liara.run/public/${idx}.png`;
 
     const newUser = await User.create({
-      email: normalizedEmail,
+      email: normalizedEmail || "",
+      phoneNumber: normalizedPhone || "",
       fullName,
       password,
       profilePic: randomAvatar,
@@ -62,8 +76,13 @@ export async function signup(req, res) {
 
     res.status(201).json({ success: true, user: newUser });
   } catch (error) {
-    if (error?.code === 11000 && error?.keyPattern?.email) {
-      return res.status(400).json({ message: "Email already exists, please use a diffrent one" });
+    if (error?.code === 11000) {
+      if (error.keyPattern?.email) {
+        return res.status(400).json({ message: "Email already exists, please use a different one" });
+      }
+      if (error.keyPattern?.phoneNumber) {
+        return res.status(400).json({ message: "Phone number already exists, please use a different one" });
+      }
     }
     console.log("Error in signup controller", error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -72,18 +91,25 @@ export async function signup(req, res) {
 
 export async function login(req, res) {
   try {
-    const { email, password } = req.body;
+    const { email, phoneNumber, password } = req.body;
     const normalizedEmail = email?.trim().toLowerCase();
+    const normalizedPhone = phoneNumber?.trim().replace(/\s+/g, "");
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+    if ((!normalizedEmail && !normalizedPhone) || !password) {
+      return res.status(400).json({ message: "Email or phone number and password are required" });
     }
 
-    const user = await User.findOne({ email: normalizedEmail });
-    if (!user) return res.status(401).json({ message: "Invalid email or password" });
+    const user = await User.findOne({
+      $or: [
+        ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
+        ...(normalizedPhone ? [{ phoneNumber: normalizedPhone }] : []),
+      ],
+    });
+
+    if (!user) return res.status(401).json({ message: "Invalid email/phone or password" });
 
     const isPasswordCorrect = await user.matchPassword(password);
-    if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid email or password" });
+    if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid email/phone or password" });
 
     const token = jwt.sign({ userId: user._id }, jwtSecret, {
       expiresIn: "7d",

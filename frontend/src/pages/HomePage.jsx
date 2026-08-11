@@ -1,24 +1,53 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getOutgoingFriendReqs,
   getRecommendedUsers,
   getUserFriends,
   sendFriendRequest,
 } from "../lib/api";
-import { Link } from "react-router";
-import { CheckCircleIcon, MapPinIcon, UserPlusIcon, UsersIcon } from "lucide-react";
+import { Link, useSearchParams } from "react-router";
+import { CheckCircleIcon, MapPinIcon, PencilIcon, UserPlusIcon, UsersIcon } from "lucide-react";
 
 import { capitialize } from "../lib/utils";
+import useAuthUser from "../hooks/useAuthUser";
 
 import FriendCard, { getLanguageFlag } from "../components/FriendCard";
 import NoFriendsFound from "../components/NoFriendsFound";
 
 const HomePage = () => {
   const queryClient = useQueryClient();
+  const { authUser } = useAuthUser();
+  const photoInputRef = useRef(null);
+  const videoInputRef = useRef(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [outgoingRequestsIds, setOutgoingRequestsIds] = useState(new Set());
-  const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [showStatusComposer, setShowStatusComposer] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState(null);
+  const [statusDraft, setStatusDraft] = useState("");
+  const [statusHighlights, setStatusHighlights] = useState(() => {
+    const buildDefaultStatuses = () => [
+      { id: "1", name: "Your status", avatar: "https://i.pravatar.cc/150?img=12", note: "Just now", type: "text", preview: null, expiresAt: Date.now() + 24 * 60 * 60 * 1000 },
+      { id: "2", name: "Maria", avatar: "https://i.pravatar.cc/150?img=32", note: "Learning English", type: "text", preview: null, expiresAt: Date.now() + 24 * 60 * 60 * 1000 },
+      { id: "3", name: "Ravi", avatar: "https://i.pravatar.cc/150?img=48", note: "At the café", type: "text", preview: null, expiresAt: Date.now() + 24 * 60 * 60 * 1000 },
+      { id: "4", name: "Leah", avatar: "https://i.pravatar.cc/150?img=51", note: "Coffee break", type: "text", preview: null, expiresAt: Date.now() + 24 * 60 * 60 * 1000 },
+    ];
+
+    const savedStatuses = localStorage.getItem("callify-status-highlights");
+
+    if (savedStatuses) {
+      try {
+        const parsedStatuses = JSON.parse(savedStatuses);
+        return parsedStatuses.length ? parsedStatuses : buildDefaultStatuses();
+      } catch {
+        return buildDefaultStatuses();
+      }
+    }
+
+    return buildDefaultStatuses();
+  });
+  const searchQuery = searchParams.get("q") || "";
 
   const { data: friends = [], isLoading: loadingFriends } = useQuery({
     queryKey: ["friends"],
@@ -50,6 +79,17 @@ const HomePage = () => {
     }
   }, [outgoingFriendReqs]);
 
+  useEffect(() => {
+    const activeStatuses = statusHighlights.filter((status) => !status.expiresAt || status.expiresAt > Date.now());
+
+    if (activeStatuses.length !== statusHighlights.length) {
+      setStatusHighlights(activeStatuses);
+      return;
+    }
+
+    localStorage.setItem("callify-status-highlights", JSON.stringify(activeStatuses));
+  }, [statusHighlights]);
+
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
   const filteredFriends = useMemo(() => {
@@ -72,6 +112,61 @@ const HomePage = () => {
 
   const showFriendsSection = activeFilter === "all" || activeFilter === "friends";
   const showLearnersSection = activeFilter === "all" || activeFilter === "learners";
+
+  const fileToDataUrl = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Unable to read file"));
+      reader.readAsDataURL(file);
+    });
+
+  const handleAddStatus = async (mediaFile = null) => {
+    const trimmedStatus = statusDraft.trim();
+    const hasMedia = Boolean(mediaFile);
+
+    if (!trimmedStatus && !hasMedia) return;
+
+    const contentLabel = hasMedia
+      ? mediaFile.type.startsWith("video/")
+        ? "Video status"
+        : "Photo status"
+      : trimmedStatus.length > 24
+        ? `${trimmedStatus.slice(0, 24)}...`
+        : trimmedStatus;
+
+    const preview = hasMedia ? await fileToDataUrl(mediaFile) : null;
+
+    const newStatus = {
+      id: Date.now().toString(),
+      name: authUser?.fullName || "Your status",
+      avatar: authUser?.profilePic || "https://i.pravatar.cc/150?img=12",
+      note: contentLabel,
+      type: hasMedia ? (mediaFile.type.startsWith("video/") ? "video" : "image") : "text",
+      preview,
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+    };
+
+    setStatusHighlights((prev) => [newStatus, ...prev.filter((status) => !(status.name === newStatus.name && status.note === "Just now" && status.type === "text"))]);
+    setStatusDraft("");
+    setShowStatusComposer(false);
+  };
+
+  const handleDeleteStatus = (statusId) => {
+    setStatusHighlights((prev) => prev.filter((status) => status.id !== statusId));
+    setSelectedStatus(null);
+  };
+
+  const handleStatusMediaSelect = async (event, mediaType) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (mediaType === "image" && !file.type.startsWith("image/")) return;
+    if (mediaType === "video" && !file.type.startsWith("video/")) return;
+
+    await handleAddStatus(file);
+    event.target.value = "";
+  };
 
   const presenceMap = useMemo(() => {
     const map = {};
@@ -104,6 +199,132 @@ const HomePage = () => {
         </div>
 
         <section className="rounded-2xl border border-base-300 bg-base-200/70 p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Status</p>
+              <h3 className="mt-1 text-lg font-semibold">Updates</h3>
+            </div>
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs"
+              onClick={() => setShowStatusComposer((prev) => !prev)}
+            >
+              {showStatusComposer ? "Close" : "+ Add"}
+            </button>
+          </div>
+
+          {showStatusComposer && (
+            <div className="mb-4 rounded-2xl border border-base-300 bg-base-100 p-3">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  value={statusDraft}
+                  onChange={(event) => setStatusDraft(event.target.value)}
+                  placeholder="Write your status update"
+                  className="input input-sm flex-1"
+                  maxLength={80}
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => photoInputRef.current?.click()}
+                  >
+                    Photo
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => videoInputRef.current?.click()}
+                  >
+                    Video
+                  </button>
+                  <button type="button" onClick={() => handleAddStatus()} className="btn btn-primary btn-sm">
+                    <PencilIcon className="mr-1 size-3.5" />
+                    Save
+                  </button>
+                </div>
+              </div>
+
+              <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleStatusMediaSelect(event, "image")} />
+              <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={(event) => handleStatusMediaSelect(event, "video")} />
+            </div>
+          )}
+
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {statusHighlights.map((status) => (
+              <button
+                key={status.id}
+                type="button"
+                className="flex min-w-[92px] flex-col items-center gap-2 rounded-xl border border-transparent bg-transparent p-1 text-center transition hover:border-primary/20"
+                onClick={() => setSelectedStatus(status)}
+              >
+                <div className={`avatar size-14 overflow-hidden rounded-full ring-2 ring-offset-2 ring-offset-base-200 ${status.name === "Your status" ? "ring-primary/60 shadow-[0_0_0_4px_rgba(59,130,246,0.18)] animate-pulse" : "ring-primary/30"}`}>
+                  {status.preview ? (
+                    status.type === "video" ? (
+                      <video src={status.preview} className="h-full w-full object-cover" muted playsInline />
+                    ) : (
+                      <img src={status.preview} alt={status.name} className="h-full w-full object-cover" />
+                    )
+                  ) : (
+                    <img src={status.avatar} alt={status.name} className="h-full w-full object-cover" />
+                  )}
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-xs font-medium leading-none">{status.name}</p>
+                  <p className="text-[10px] opacity-60">{status.note}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {selectedStatus && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+            <div className="relative flex h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-base-100 shadow-2xl">
+              <button
+                type="button"
+                onClick={() => setSelectedStatus(null)}
+                className="absolute right-4 top-4 z-10 btn btn-circle btn-sm bg-base-100/80 text-base-content border-none"
+              >
+                ✕
+              </button>
+
+              <div className="flex items-center justify-between border-b border-base-300 bg-base-200 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="avatar size-10 rounded-full">
+                    <img src={selectedStatus.avatar} alt={selectedStatus.name} />
+                  </div>
+                  <div>
+                    <p className="font-semibold">{selectedStatus.name}</p>
+                    <p className="text-xs opacity-60">{selectedStatus.note}</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline btn-error"
+                  onClick={() => handleDeleteStatus(selectedStatus.id)}
+                >
+                  Delete
+                </button>
+              </div>
+
+              <div className="flex flex-1 items-center justify-center bg-base-200">
+                {selectedStatus.type === "text" ? (
+                  <div className="px-6 text-center">
+                    <p className="text-3xl font-semibold leading-relaxed">{selectedStatus.note}</p>
+                  </div>
+                ) : selectedStatus.type === "video" ? (
+                  <video src={selectedStatus.preview} className="h-full w-full object-cover" controls autoPlay />
+                ) : (
+                  <img src={selectedStatus.preview || selectedStatus.avatar} alt={selectedStatus.name} className="h-full w-full object-cover" />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <section className="rounded-2xl border border-base-300 bg-base-200/70 p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex-1">
               <label className="input input-bordered flex items-center gap-2 bg-base-100/80">
@@ -112,12 +333,15 @@ const HomePage = () => {
                 </svg>
                 <input
                   value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onChange={(event) => {
+                    const nextValue = event.target.value.trimStart();
+                    setSearchParams(nextValue ? { q: nextValue } : {});
+                  }}
                   placeholder="Search contacts or learners"
                   className="grow border-none bg-transparent outline-none"
                 />
                 {searchQuery ? (
-                  <button type="button" className="btn btn-ghost btn-xs" onClick={() => setSearchQuery("")}>
+                  <button type="button" className="btn btn-ghost btn-xs" onClick={() => setSearchParams({})}>
                     ✕
                   </button>
                 ) : null}

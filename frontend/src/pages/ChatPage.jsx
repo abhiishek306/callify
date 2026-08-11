@@ -31,8 +31,10 @@ const ChatPage = () => {
   const [draftMessage, setDraftMessage] = useState("");
   const [showQuickActions, setShowQuickActions] = useState(true);
   const [draftSaved, setDraftSaved] = useState(false);
+  const [deliveryState, setDeliveryState] = useState("Read");
 
   const quickReplies = ["Hey!", "How are you?", "Let’s practice!", "See you soon!"];
+  const reactionChoices = ["👍", "❤️", "😂", "🎉", "🔥"];
 
   const { authUser } = useAuthUser();
   const socketRef = useSocket();
@@ -172,7 +174,20 @@ const ChatPage = () => {
     setDraftMessage("");
     setShowQuickActions(true);
     setDraftSaved(false);
+    setDeliveryState("Delivered");
     window.localStorage.removeItem(`chat-draft-${targetUserId}`);
+  };
+
+  const handleQuickReaction = (emoji) => {
+    const reaction = `${emoji} ${draftMessage || "Thanks!"}`.trim();
+    sendTextMessage(reaction);
+    toast.success(`Reaction sent: ${emoji}`);
+  };
+
+  const handleVoiceNote = () => {
+    const voiceNoteText = "🎙️ Voice note • 0:42";
+    sendTextMessage(voiceNoteText);
+    toast.success("Voice note sent");
   };
 
   const handleVideoCall = () => {
@@ -246,7 +261,7 @@ const ChatPage = () => {
                     <span className="h-2.5 w-2.5 rounded-full bg-success" />
                     <span>Online</span>
                     <span>•</span>
-                    <span>Read</span>
+                    <span>{deliveryState}</span>
                   </div>
                 </div>
               </div>
@@ -270,12 +285,12 @@ const ChatPage = () => {
                 <div className="border-t border-base-300 bg-base-100/95 px-3 py-3 shadow-[0_-4px_10px_rgba(0,0,0,0.04)]">
                   {showQuickActions && (
                     <div className="mb-2 flex flex-wrap gap-2">
-                      {['😊', '👍', '❤️', '😂'].map((emoji) => (
+                      {reactionChoices.map((emoji) => (
                         <button
                           key={emoji}
                           type="button"
                           className="rounded-full border border-base-300 bg-base-100 px-2 py-1 text-sm transition hover:bg-base-200"
-                          onClick={() => handleQuickEmoji(emoji)}
+                          onClick={() => handleQuickReaction(emoji)}
                         >
                           {emoji}
                         </button>
@@ -327,10 +342,14 @@ const ChatPage = () => {
                       placeholder="Type a message"
                       className="flex-1 resize-none border-none bg-transparent text-sm outline-none"
                     />
-                    <label className="cursor-pointer rounded-full bg-base-200 px-2.5 py-2 text-sm transition hover:bg-base-300">
+                    <button
+                      type="button"
+                      className="rounded-full bg-base-200 px-2.5 py-2 text-sm transition hover:bg-base-300"
+                      onClick={handleVoiceNote}
+                      title="Send voice note"
+                    >
                       🎤
-                      <input type="file" accept="audio/*" className="hidden" onChange={handleAttachmentSelect} />
-                    </label>
+                    </button>
                     <label className="cursor-pointer rounded-full bg-base-200 px-2.5 py-2 text-sm transition hover:bg-base-300">
                       📎
                       <input type="file" className="hidden" onChange={handleAttachmentSelect} />

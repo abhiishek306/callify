@@ -1,13 +1,15 @@
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useSearchParams } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
-import { BellIcon, LogOutIcon, MessageCircleMoreIcon, SearchIcon, ShipWheelIcon } from "lucide-react";
+import { BellIcon, LogOutIcon, MessageCircleMoreIcon, PencilLineIcon, SearchIcon, ShipWheelIcon } from "lucide-react";
 import ThemeSelector from "./ThemeSelector";
 import useLogout from "../hooks/useLogout";
 
 const Navbar = () => {
   const { authUser } = useAuthUser();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isChatPage = location.pathname?.startsWith("/chat");
+  const searchQuery = searchParams.get("q") || "";
 
   // const queryClient = useQueryClient();
   // const { mutate: logoutMutation } = useMutation({
@@ -27,9 +29,18 @@ const Navbar = () => {
               <span className="text-xl font-semibold tracking-wide text-base-content">Streamify</span>
             </Link>
           ) : (
-            <div className="flex items-center gap-2 rounded-full border border-base-300 bg-base-100 px-3 py-2">
+            <div className="flex min-w-[220px] items-center gap-2 rounded-full border border-base-300 bg-base-100 px-3 py-2">
               <SearchIcon className="size-4 opacity-70" />
-              <span className="text-sm opacity-70">Search chats</span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => {
+                  const nextValue = event.target.value.trimStart();
+                  setSearchParams(nextValue ? { q: nextValue } : {});
+                }}
+                placeholder="Search chats"
+                className="w-full border-none bg-transparent text-sm outline-none placeholder:text-base-content/50"
+              />
             </div>
           )}
         </div>
@@ -40,6 +51,9 @@ const Navbar = () => {
           </Link>
           <Link to="/" className="btn btn-ghost btn-circle">
             <MessageCircleMoreIcon className="h-5 w-5 text-base-content opacity-70" />
+          </Link>
+          <Link to="/profile" className="btn btn-ghost btn-circle" aria-label="Edit profile">
+            <PencilLineIcon className="h-5 w-5 text-base-content opacity-70" />
           </Link>
           <ThemeSelector />
           <div className="avatar">

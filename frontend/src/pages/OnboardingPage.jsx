@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import useAuthUser from "../hooks/useAuthUser";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { completeOnboarding } from "../lib/api";
-import { CameraIcon, LoaderIcon, MapPinIcon, ShipWheelIcon, ShuffleIcon, UploadIcon } from "lucide-react";
+import { completeOnboarding, updateUserProfile } from "../lib/api";
+import { CameraIcon, LoaderIcon, MapPinIcon, PencilLineIcon, ShipWheelIcon, ShuffleIcon, UploadIcon } from "lucide-react";
 import { LANGUAGES } from "../constants";
 
-const OnboardingPage = () => {
+const OnboardingPage = ({ editMode = false }) => {
   const { authUser } = useAuthUser();
   const queryClient = useQueryClient();
   const fileInputRef = useRef(null);
@@ -42,14 +42,14 @@ const OnboardingPage = () => {
   }, [profilePicPreview]);
 
   const { mutate: onboardingMutation, isPending } = useMutation({
-    mutationFn: completeOnboarding,
+    mutationFn: editMode ? updateUserProfile : completeOnboarding,
     onSuccess: () => {
-      toast.success("Profile onboarded successfully");
+      toast.success(editMode ? "Profile updated successfully" : "Profile onboarded successfully");
       queryClient.invalidateQueries({ queryKey: ["authUser"] });
     },
 
     onError: (error) => {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Something went wrong");
     },
   });
 
@@ -106,8 +106,12 @@ const OnboardingPage = () => {
       <div className="w-full max-w-4xl overflow-hidden rounded-[28px] border border-primary/20 bg-base-100 shadow-2xl shadow-primary/10">
         <div className="p-6 sm:p-8">
           <div className="mb-6 text-center">
-            <h1 className="text-2xl font-bold sm:text-3xl">Complete your profile</h1>
-            <p className="mt-2 text-sm opacity-70">Set up your identity so your future chat partners know who you are.</p>
+            <h1 className="text-2xl font-bold sm:text-3xl">{editMode ? "Edit profile" : "Complete your profile"}</h1>
+            <p className="mt-2 text-sm opacity-70">
+              {editMode
+                ? "Update your photo, bio, and language preferences to keep your profile fresh."
+                : "Set up your identity so your future chat partners know who you are."}
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -223,13 +227,13 @@ const OnboardingPage = () => {
             <button className="btn btn-primary w-full" disabled={isPending} type="submit">
               {!isPending ? (
                 <>
-                  <ShipWheelIcon className="mr-2 size-5" />
-                  Complete Onboarding
+                  {editMode ? <PencilLineIcon className="mr-2 size-5" /> : <ShipWheelIcon className="mr-2 size-5" />}
+                  {editMode ? "Save profile changes" : "Complete Onboarding"}
                 </>
               ) : (
                 <>
                   <LoaderIcon className="mr-2 size-5 animate-spin" />
-                  Onboarding...
+                  {editMode ? "Saving..." : "Onboarding..."}
                 </>
               )}
             </button>

@@ -3,40 +3,83 @@ import { ShipWheelIcon } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import useLogin from "../hooks/useLogin";
+import { sendPhoneOtp, verifyPhoneOtp } from "../lib/api";
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [loginMode, setLoginMode] = useState("email");
   const [loginData, setLoginData] = useState({
-    email: "",
+    identifier: "",
     password: "",
   });
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpInput, setOtpInput] = useState("");
+  const [otpMessage, setOtpMessage] = useState("");
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
-  // This is how we did it at first, without using our custom hook
-  // const queryClient = useQueryClient();
-  // const {
-  //   mutate: loginMutation,
-  //   isPending,
-  //   error,
-  // } = useMutation({
-  //   mutationFn: login,
-  //   onSuccess: () => queryClient.invalidateQueries({ queryKey: ["authUser"] }),
-  // });
-
-  // This is how we did it using our custom hook - optimized version
   const { isPending, error, loginMutation } = useLogin();
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    loginMutation({
-      ...loginData,
-      email: loginData.email.trim().toLowerCase(),
-    }, {
-      onSuccess: (data) => {
-        queryClient.setQueryData(["authUser"], { user: data.user });
-        navigate(data.user?.isOnboarded ? "/" : "/onboarding");
+  const finishLogin = () => {
+    loginMutation(
+      {
+        email: loginMode === "email" ? loginData.identifier.trim().toLowerCase() : "",
+        phoneNumber: loginMode === "phone" ? loginData.identifier.trim() : "",
+        password: loginData.password,
       },
-    });
+      {
+        onSuccess: (data) => {
+          queryClient.setQueryData(["authUser"], { user: data.user });
+          navigate(data.user?.isOnboarded ? "/" : "/onboarding");
+        },
+      }
+    );
+  };
+
+  const handleSendOtp = async (e) => {
+    e.preventDefault();
+    const trimmedIdentifier = loginData.identifier.trim();
+
+    if (!trimmedIdentifier || !loginData.password) {
+      return;
+    }
+
+    if (loginMode === "phone") {
+      try {
+        setIsSendingOtp(true);
+        const result = await sendPhoneOtp(trimmedIdentifier);
+        setOtpMessage(result.message || `Verification code sent to ${trimmedIdentifier}`);
+        setOtpStep(true);
+      } catch (error) {
+        setOtpMessage(error.response?.data?.message || "Unable to send verification code.");
+      } finally {
+        setIsSendingOtp(false);
+      }
+      return;
+    }
+
+    finishLogin();
+  };
+
+  const handleVerifyOtpAndLogin = async () => {
+    if (!otpInput.trim()) {
+      setOtpMessage("Please enter the 6-digit code.");
+      return;
+    }
+
+    try {
+      setIsVerifyingOtp(true);
+      await verifyPhoneOtp({
+        phoneNumber: loginData.identifier.trim(),
+        code: otpInput.trim(),
+      });
+      finishLogin();
+    } catch (error) {
+      setOtpMessage(error.response?.data?.message || "The verification code is incorrect. Please try again.");
+    } finally {
+      setIsVerifyingOtp(false);
+    }
   };
 
   return (
@@ -56,56 +99,147 @@ const LoginPage = () => {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="flex-1 space-y-5">
-            <div>
-              <h2 className="text-2xl font-semibold">Welcome back</h2>
-              <p className="mt-1 text-sm opacity-70">Sign in to continue chatting and learning together.</p>
-            </div>
+          {!otpStep ? (
+            <form onSubmit={handleSendOtp} className="flex-1 space-y-5">
+              <div>
+                <h2 className="text-2xl font-semibold">Welcome back</h2>
+                <p className="mt-1 text-sm opacity-70">Sign in using your email or mobile number.</p>
+              </div>
 
-            <div className="space-y-3">
-              <label className="form-control w-full">
-                <span className="label-text mb-2">Email</span>
-                <input
-                  type="email"
-                  placeholder="hello@example.com"
-                  className="input input-bordered w-full"
-                  value={loginData.email}
-                  onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                  required
-                />
-              </label>
+              <div className="space-y-3">
+                <div className="flex gap-2 rounded-full border border-base-300 bg-base-100 p-1">
+                  {[
+                    { value: "email", label: "Email" },
+                    { value: "phone", label: "Phone" },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition ${
+                        loginMode === option.value ? "bg-primary text-primary-content" : "text-base-content/70"
+                      }`}
+                      onClick={() => setLoginMode(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
 
-              <label className="form-control w-full">
-                <span className="label-text mb-2">Password</span>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  className="input input-bordered w-full"
-                  value={loginData.password}
-                  onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                  required
-                />
-              </label>
-            </div>
+                <label className="form-control w-full">
+                  <span className="label-text mb-2">{loginMode === "email" ? "Email" : "Phone number"}</span>
+                  <input
+                    type={loginMode === "email" ? "email" : "tel"}
+                    placeholder={loginMode === "email" ? "hello@example.com" : "+1 555 123 4567"}
+                    className="input input-bordered w-full"
+                    value={loginData.identifier}
+                    onChange={(e) => setLoginData({ ...loginData, identifier: e.target.value })}
+                    required
+                  />
+                </label>
 
-            <button type="submit" className="btn btn-primary w-full" disabled={isPending}>
-              {isPending ? (
-                <>
-                  <span className="loading loading-spinner loading-xs" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign In"
+                <label className="form-control w-full">
+                  <span className="label-text mb-2">Password</span>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    className="input input-bordered w-full"
+                    value={loginData.password}
+                    onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                    required
+                  />
+                </label>
+              </div>
+
+              <button type="submit" className="btn btn-primary w-full" disabled={isPending || isSendingOtp}>
+                {isPending || isSendingOtp ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs" />
+                    {isSendingOtp ? "Sending code..." : "Signing in..."}
+                  </>
+                ) : loginMode === "phone" ? (
+                  "Next"
+                ) : (
+                  "Sign In"
+                )}
+              </button>
+
+              <div className="text-center text-sm">
+                <span className="opacity-70">Don’t have an account?</span>{" "}
+                <Link to="/signup" className="font-semibold text-primary hover:underline">
+                  Create one
+                </Link>
+              </div>
+            </form>
+          ) : (
+            <div className="flex flex-1 flex-col justify-center space-y-5">
+              <div>
+                <h2 className="text-2xl font-semibold">Verify your number</h2>
+                <p className="mt-2 text-sm opacity-70">We sent a 6-digit code to {loginData.identifier}.</p>
+              </div>
+
+              {otpMessage && (
+                <div className="alert alert-info text-sm">
+                  <span>{otpMessage}</span>
+                </div>
               )}
-            </button>
 
-            <div className="text-center text-sm">
-              <span className="opacity-70">Don’t have an account?</span>{" "}
-              <Link to="/signup" className="font-semibold text-primary hover:underline">
-                Create one
-              </Link>
+              <label className="form-control w-full">
+                <span className="label-text mb-2">Enter code</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="123456"
+                  className="input input-bordered w-full"
+                  value={otpInput}
+                  onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ""))}
+                />
+              </label>
+
+              <button className="btn btn-primary w-full" onClick={handleVerifyOtpAndLogin} disabled={isVerifyingOtp}>
+                {isVerifyingOtp ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs" />
+                    Verifying...
+                  </>
+                ) : (
+                  "Verify & Sign In"
+                )}
+              </button>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  className="btn btn-ghost flex-1"
+                  onClick={async () => {
+                    try {
+                      setIsSendingOtp(true);
+                      const result = await sendPhoneOtp(loginData.identifier.trim());
+                      setOtpMessage(result.message || `Verification code sent to ${loginData.identifier}`);
+                    } catch (error) {
+                      setOtpMessage(error.response?.data?.message || "Unable to resend code.");
+                    } finally {
+                      setIsSendingOtp(false);
+                    }
+                  }}
+                >
+                  Resend
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-ghost flex-1"
+                  onClick={() => {
+                    setOtpStep(false);
+                    setOtpInput("");
+                    setOtpMessage("");
+                  }}
+                >
+                  Edit number
+                </button>
+              </div>
             </div>
-          </form>
+          )}
         </div>
 
         <div className="hidden w-full items-center justify-center bg-primary/10 p-8 lg:flex lg:w-1/2">

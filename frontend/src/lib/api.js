@@ -9,6 +9,17 @@ export const login = async (loginData) => {
   const response = await axiosInstance.post("/auth/login", loginData);
   return response.data;
 };
+
+export const sendPhoneOtp = async (phoneNumber) => {
+  const response = await axiosInstance.post("/auth/send-otp", { phoneNumber });
+  return response.data;
+};
+
+export const verifyPhoneOtp = async ({ phoneNumber, code }) => {
+  const response = await axiosInstance.post("/auth/verify-otp", { phoneNumber, code });
+  return response.data;
+};
+
 export const logout = async () => {
   const response = await axiosInstance.post("/auth/logout");
   return response.data;
@@ -26,6 +37,11 @@ export const getAuthUser = async () => {
 
 export const completeOnboarding = async (userData) => {
   const response = await axiosInstance.post("/auth/onboarding", userData);
+  return response.data;
+};
+
+export const updateUserProfile = async (userData) => {
+  const response = await axiosInstance.put("/users/profile", userData);
   return response.data;
 };
 
