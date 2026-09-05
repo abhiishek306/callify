@@ -12,7 +12,7 @@ import { CheckCircleIcon, MapPinIcon, PencilIcon, UserPlusIcon, UsersIcon } from
 import { capitialize } from "../lib/utils";
 import useAuthUser from "../hooks/useAuthUser";
 
-import FriendCard, { getLanguageFlag } from "../components/FriendCard";
+import { getLanguageFlag } from "../components/FriendCard";
 import NoFriendsFound from "../components/NoFriendsFound";
 
 const HomePage = () => {
@@ -21,7 +21,6 @@ const HomePage = () => {
   const photoInputRef = useRef(null);
   const videoInputRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [outgoingRequestsIds, setOutgoingRequestsIds] = useState(new Set());
   const [activeFilter, setActiveFilter] = useState("all");
   const [showStatusComposer, setShowStatusComposer] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(null);
@@ -69,24 +68,13 @@ const HomePage = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["outgoingFriendReqs"] }),
   });
 
-  useEffect(() => {
-    const outgoingIds = new Set();
-    if (outgoingFriendReqs && outgoingFriendReqs.length > 0) {
-      outgoingFriendReqs.forEach((req) => {
-        outgoingIds.add(req.recipient._id);
-      });
-      setOutgoingRequestsIds(outgoingIds);
-    }
-  }, [outgoingFriendReqs]);
+  const outgoingRequestsIds = useMemo(
+    () => new Set((outgoingFriendReqs || []).map((req) => req.recipient._id)),
+    [outgoingFriendReqs]
+  );
 
   useEffect(() => {
     const activeStatuses = statusHighlights.filter((status) => !status.expiresAt || status.expiresAt > Date.now());
-
-    if (activeStatuses.length !== statusHighlights.length) {
-      setStatusHighlights(activeStatuses);
-      return;
-    }
-
     localStorage.setItem("callify-status-highlights", JSON.stringify(activeStatuses));
   }, [statusHighlights]);
 

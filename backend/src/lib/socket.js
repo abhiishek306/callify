@@ -1,9 +1,31 @@
 import { Server } from "socket.io";
+import { createClient } from "redis";
+import { createAdapter } from "@socket.io/redis-adapter";
 import { sendStreamMessage } from "./stream.js";
+import {
+  recordCallSetupFailure,
+  recordCallSetupSuccess,
+  recordReconnectAttempt,
+  recordReconnectSuccess,
+} from "./metrics.js";
 
 let io;
 
-export const initSocket = (server) => {
+const ensureRoomMembership = (socket, roomId) => {
+  if (!socket.data.joinedRooms) {
+    socket.data.joinedRooms = new Set();
+  }
+
+  if (socket.data.joinedRooms.has(roomId)) {
+    return false;
+  }
+
+  socket.join(roomId);
+  socket.data.joinedRooms.add(roomId);
+  return true;
+};
+
+export const initSocket = async (server) => {
   io = new Server(server, {
     cors: {
       origin: [
@@ -17,12 +39,53 @@ export const initSocket = (server) => {
     },
   });
 
+  if (process.env.REDIS_URL) {
+    try {
+      const pubClient = createClient({ url: process.env.REDIS_URL });
+      const subClient = pubClient.duplicate();
+      await Promise.all([pubClient.connect(), subClient.connect()]);
+      io.adapter(createAdapter(pubClient, subClient));
+      console.log("Socket.io Redis adapter enabled");
+    } catch (error) {
+      console.error("Redis adapter failed to initialize:", error);
+    }
+  }
+
   io.on("connection", (socket) => {
     socket.on("join-room", ({ roomId, userId }) => {
-      if (roomId && userId) {
-        socket.join(roomId);
-        socket.data.userId = userId;
+      if (!roomId || !userId) {
+        recordCallSetupFailure();
+        return;
+      }
+
+      const startedAt = Date.now();
+      const isNewJoin = ensureRoomMembership(socket, roomId);
+      socket.data.userId = userId;
+
+      if (isNewJoin) {
         socket.to(roomId).emit("user-joined", { userId, roomId });
+        recordCallSetupSuccess(Date.now() - startedAt);
+      } else {
+        socket.emit("room-state", { roomId, joined: true, duplicate: true });
+      }
+    });
+
+    socket.on("leave-room", ({ roomId }) => {
+      if (!roomId) return;
+      socket.leave(roomId);
+      if (socket.data.joinedRooms) {
+        socket.data.joinedRooms.delete(roomId);
+      }
+    });
+
+    socket.on("reconnect-attempt", ({ roomId, userId }) => {
+      recordReconnectAttempt();
+
+      if (roomId && userId) {
+        ensureRoomMembership(socket, roomId);
+        socket.data.userId = userId;
+        socket.emit("room-state", { roomId, joined: true, recovered: true });
+        recordReconnectSuccess();
       }
     });
 
@@ -44,6 +107,7 @@ export const initSocket = (server) => {
     });
 
     socket.on("typing", ({ roomId, userId, isTyping }) => {
+      if (!roomId || !userId) return;
       socket.to(roomId).emit("typing-update", { roomId, userId, isTyping });
     });
 

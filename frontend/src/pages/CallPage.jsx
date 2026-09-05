@@ -18,6 +18,7 @@ import {
 import "@stream-io/video-react-sdk/dist/css/styles.css";
 import toast from "react-hot-toast";
 import PageLoader from "../components/PageLoader";
+import { getNetworkQuality } from "../lib/utils";
 
 const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
 
@@ -26,6 +27,7 @@ const CallPage = () => {
   const [client, setClient] = useState(null);
   const [call, setCall] = useState(null);
   const [isConnecting, setIsConnecting] = useState(true);
+  const [networkQuality, setNetworkQuality] = useState(getNetworkQuality());
 
   const { authUser, isLoading } = useAuthUser();
 
@@ -34,6 +36,18 @@ const CallPage = () => {
     queryFn: getStreamToken,
     enabled: !!authUser,
   });
+
+  useEffect(() => {
+    const updateQuality = () => setNetworkQuality(getNetworkQuality());
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+
+    updateQuality();
+    connection?.addEventListener?.("change", updateQuality);
+
+    return () => {
+      connection?.removeEventListener?.("change", updateQuality);
+    };
+  }, []);
 
   useEffect(() => {
     const initCall = async () => {
@@ -88,6 +102,9 @@ const CallPage = () => {
   return (
     <div className="h-screen flex flex-col items-center justify-center">
       <div className="relative">
+        <div className="absolute right-3 top-3 z-20 rounded-full border border-base-300 bg-base-100/80 px-3 py-1 text-xs font-medium shadow-sm">
+          Network: {networkQuality}
+        </div>
         {client && call ? (
           <StreamVideo client={client}>
             <StreamCall call={call}>

@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import fs from "fs";
 import path from "path";
+import helmet from "helmet";
 
 import authRoutes from "./routes/auth.route.js";
 import userRoutes from "./routes/user.route.js";
@@ -15,6 +16,9 @@ import { createServer } from "http";
 import { generalLimiter, authLimiter } from "./middleware/rateLimiter.js";
 import { initCache } from "./lib/cache.js";
 import { env } from "./config/env.js";
+import { logger, requestLogger } from "./lib/logger.js";
+import { getMetricsSnapshot } from "./lib/metrics.js";
+import { createErrorResponse } from "./lib/http.js";
 
 const app = express();
 const PORT = env.port;
@@ -41,6 +45,8 @@ if (!fs.existsSync(uploadsPath)) {
   fs.mkdirSync(uploadsPath, { recursive: true });
 }
 
+app.disable("x-powered-by");
+app.use(helmet());
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -50,14 +56,23 @@ app.use(
 
       callback(new Error("Not allowed by CORS"));
     },
-    credentials: true, // allow frontend to send cookies
+    credentials: true,
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 app.use(generalLimiter);
+app.use(requestLogger);
 app.use("/uploads", express.static(uploadsPath));
+
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ success: true, status: "ok" });
+});
+
+app.get("/api/metrics", (req, res) => {
+  res.status(200).json({ success: true, metrics: getMetricsSnapshot() });
+});
 
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/users", userRoutes);
@@ -71,10 +86,20 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-initSocket(server);
+app.use((err, req, res, next) => {
+  logger.error({ err, requestId: req.id }, "Unhandled error");
+
+  const statusCode = err.statusCode || 500;
+  const errorCode = err.code || "INTERNAL_SERVER_ERROR";
+  const message = err.message || "Internal server error";
+
+  res.status(statusCode).json(createErrorResponse(errorCode, message, err.details || undefined));
+});
+
+await initSocket(server);
 
 server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  logger.info(`Server is running on port ${PORT}`);
   connectDB();
-  initCache().catch((error) => console.error("Redis init failed", error));
+  initCache().catch((error) => logger.error({ error }, "Redis init failed"));
 });

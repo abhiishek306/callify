@@ -26,7 +26,6 @@ const ChatPage = () => {
   const [chatClient, setChatClient] = useState(null);
   const [channel, setChannel] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [socketReady, setSocketReady] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
   const [draftMessage, setDraftMessage] = useState("");
   const [showQuickActions, setShowQuickActions] = useState(true);
@@ -112,7 +111,6 @@ const ChatPage = () => {
 
         const roomId = currChannel.id;
         socketRef.current?.emit("join-room", { roomId, userId: authUser._id });
-        setSocketReady(true);
       } catch (error) {
         console.error("Error initializing chat:", error);
         toast.error("Could not connect to chat. Please try again.");
@@ -212,11 +210,6 @@ const ChatPage = () => {
   const handleSendMessage = (event) => {
     event?.preventDefault();
     sendTextMessage(draftMessage);
-  };
-
-  const handleQuickEmoji = (emoji) => {
-    setDraftMessage((prev) => `${prev}${emoji}`);
-    setShowQuickActions(true);
   };
 
   const handleAttachmentSelect = (event) => {
